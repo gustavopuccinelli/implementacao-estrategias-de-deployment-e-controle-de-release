@@ -49,9 +49,22 @@ def switch(green):
     # O backup fica fora de conf.d, pois o Nginx lê todos os arquivos *.conf.
     shell = '''set -eu
 cat > /tmp/release-candidate
+master=$(cat /var/run/nginx.pid)
+old_workers=$(cat /proc/$master/task/$master/children)
 cp /etc/nginx/conf.d/default.conf /tmp/release-backup
 cp /tmp/release-candidate /etc/nginx/conf.d/default.conf
 if nginx -t && nginx -s reload; then
+    for pid in $old_workers; do
+        attempt=0
+        while kill -0 "$pid" 2>/dev/null; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 100 ]; then
+                echo 'Workers antigos ainda estão drenando; confira os logs.' >&2
+                exit 1
+            fi
+            sleep 0.1
+        done
+    done
     exit 0
 else
     cp /tmp/release-backup /etc/nginx/conf.d/default.conf

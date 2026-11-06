@@ -104,7 +104,7 @@ O workflow **Testar Canary e Blue-Green**, na aba [Actions](https://github.com/g
 
 ## Como a troca funciona
 
-O script verifica a saúde dos destinos que receberão tráfego, monta o bloco `upstream`, salva um backup da configuração e executa `nginx -t`. Se a validação falhar, restaura o arquivo anterior. Com a configuração válida, envia `nginx -s reload` e aguarda uma resposta com o cabeçalho da nova configuração.
+O script verifica a saúde dos destinos que receberão tráfego, monta o bloco `upstream`, salva um backup da configuração e executa `nginx -t`. Se a validação falhar, restaura o arquivo anterior. Com a configuração válida, envia `nginx -s reload`, aguarda o encerramento dos workers antigos e confirma uma resposta com o cabeçalho da nova configuração. Essa espera evita medir uma mistura das configurações antiga e nova logo após a troca.
 
 O reload é gracioso: requisições já em andamento podem terminar na versão anterior. Não desligamos Blue durante a troca. Desativamos o retry automático do proxy neste laboratório para que os erros da versão candidata apareçam na amostra em vez de serem ocultados por uma segunda tentativa em Blue.
 
