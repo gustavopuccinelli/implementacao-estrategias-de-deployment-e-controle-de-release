@@ -1,0 +1,41 @@
+name: Testar Canary e Blue-Green
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demonstracao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Testes unitários
+        run: python -m unittest discover -s tests -v
+      - name: Validar Compose
+        run: docker compose config --quiet
+      - name: Construir e iniciar ambiente
+        run: docker compose up -d --build --wait --wait-timeout 120
+      - name: Demonstrar troca de tráfego, falha e rollback
+        run: python scripts/demo.py
+      - name: Coletar logs
+        if: always()
+        run: |
+          mkdir -p evidencias
+          docker compose logs --no-color > evidencias/containers.log 2>&1
+          docker compose ps -a > evidencias/containers.txt
+      - name: Salvar evidências da execução
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias-deployment
+          path: evidencias/
+      - name: Encerrar ambiente
+        if: always()
+        run: docker compose down
